@@ -1,3 +1,4 @@
+/// Optional visual overrides applied to the native payment sheet.
 final class PaymentSheetAppearance {
   const PaymentSheetAppearance({
     this.primaryColor,
@@ -40,6 +41,7 @@ final class PaymentSheetAppearance {
   }
 }
 
+/// Optional W3C trace context for application and SDK activity.
 final class PaymentSheetTelemetry {
   const PaymentSheetTelemetry({
     this.enabled = true,
@@ -81,6 +83,7 @@ final class PaymentSheetTelemetry {
   }
 }
 
+/// Configuration stored for the next payment-sheet presentation.
 final class PaymentSheetConfiguration {
   const PaymentSheetConfiguration({
     required this.orderId,
@@ -118,32 +121,58 @@ final class PaymentSheetConfiguration {
   }
 }
 
-const _paymentSheetTelemetryEventNames = {
-  'inttegro.payment_sheet.presented',
-  'inttegro.checkout.load.started',
-  'inttegro.checkout.load.succeeded',
-  'inttegro.checkout.load.failed',
-  'inttegro.payment.attempt.started',
-  'inttegro.payment.attempt.failed',
-  'inttegro.payment.confirmation.required',
-  'inttegro.payment.authorization.required',
-  'inttegro.payment.status.polling',
-  'inttegro.payment_sheet.completed',
-  'inttegro.payment_sheet.canceled',
-  'inttegro.payment_sheet.failed',
-  'inttegro.request.prepared',
-  'inttegro.http.attempt.started',
-  'inttegro.response.received',
-  'inttegro.response.decoded',
-  'inttegro.request.failed',
-};
+/// Stable wire names emitted by the native SDK diagnostic stream.
+enum PaymentSheetTelemetryEventName {
+  sheetPresented('inttegro.payment_sheet.presented'),
+  checkoutLoadStarted('inttegro.checkout.load.started'),
+  checkoutLoadSucceeded('inttegro.checkout.load.succeeded'),
+  checkoutLoadFailed('inttegro.checkout.load.failed'),
+  paymentAttemptStarted('inttegro.payment.attempt.started'),
+  paymentAttemptFailed('inttegro.payment.attempt.failed'),
+  confirmationRequired('inttegro.payment.confirmation.required'),
+  authorizationRequired('inttegro.payment.authorization.required'),
+  statusPolling('inttegro.payment.status.polling'),
+  sheetCompleted('inttegro.payment_sheet.completed'),
+  sheetCanceled('inttegro.payment_sheet.canceled'),
+  sheetFailed('inttegro.payment_sheet.failed'),
+  requestPrepared('inttegro.request.prepared'),
+  httpAttemptStarted('inttegro.http.attempt.started'),
+  responseReceived('inttegro.response.received'),
+  responseDecoded('inttegro.response.decoded'),
+  requestFailed('inttegro.request.failed');
 
-const _paymentSheetTelemetryOperations = {
-  'checkout.lookup',
-  'checkout.pay',
-  'checkout.request_confirmation',
-  'checkout.confirm_payment',
-};
+  const PaymentSheetTelemetryEventName(this.wireValue);
+
+  /// The exact name emitted across the platform channel.
+  final String wireValue;
+
+  static PaymentSheetTelemetryEventName? fromWireValue(String value) {
+    for (final name in values) {
+      if (name.wireValue == value) return name;
+    }
+    return null;
+  }
+}
+
+/// Checkout operations that may appear in diagnostic events.
+enum PaymentSheetTelemetryOperation {
+  checkoutLookup('checkout.lookup'),
+  checkoutPay('checkout.pay'),
+  checkoutRequestConfirmation('checkout.request_confirmation'),
+  checkoutConfirmPayment('checkout.confirm_payment');
+
+  const PaymentSheetTelemetryOperation(this.wireValue);
+
+  /// The exact operation name emitted across the platform channel.
+  final String wireValue;
+
+  static PaymentSheetTelemetryOperation? fromWireValue(String value) {
+    for (final operation in values) {
+      if (operation.wireValue == value) return operation;
+    }
+    return null;
+  }
+}
 
 const _paymentSheetTelemetryEventFields = {
   'flowId',
@@ -156,6 +185,7 @@ const _paymentSheetTelemetryEventFields = {
   'errorType',
 };
 
+/// Privacy-safe diagnostic metadata from one payment-sheet presentation.
 final class PaymentSheetTelemetryEvent {
   const PaymentSheetTelemetryEvent({
     required this.flowId,
@@ -171,9 +201,9 @@ final class PaymentSheetTelemetryEvent {
   factory PaymentSheetTelemetryEvent.fromJson(Map<Object?, Object?> value) {
     final flowId = value['flowId'];
     final sequence = value['sequence'];
-    final name = value['name'];
+    final rawName = value['name'];
     final timestamp = value['timestamp'];
-    final operation = value['operation'];
+    final rawOperation = value['operation'];
     final httpStatusCode = value['httpStatusCode'];
     final requestId = value['requestId'];
     final errorType = value['errorType'];
@@ -188,13 +218,10 @@ final class PaymentSheetTelemetryEvent {
         ).hasMatch(flowId) ||
         sequence is! int ||
         sequence < 1 ||
-        name is! String ||
-        !_paymentSheetTelemetryEventNames.contains(name) ||
+        rawName is! String ||
         timestamp is! String ||
         DateTime.tryParse(timestamp) == null ||
-        (operation != null &&
-            (operation is! String ||
-                !_paymentSheetTelemetryOperations.contains(operation))) ||
+        (rawOperation != null && rawOperation is! String) ||
         (httpStatusCode != null &&
             (httpStatusCode is! int ||
                 httpStatusCode < 100 ||
@@ -209,12 +236,21 @@ final class PaymentSheetTelemetryEvent {
         'Native payment sheet returned an invalid telemetry event',
       );
     }
+    final name = PaymentSheetTelemetryEventName.fromWireValue(rawName);
+    final operation = rawOperation == null
+        ? null
+        : PaymentSheetTelemetryOperation.fromWireValue(rawOperation as String);
+    if (name == null || (rawOperation != null && operation == null)) {
+      throw const FormatException(
+        'Native payment sheet returned an unknown telemetry event',
+      );
+    }
     return PaymentSheetTelemetryEvent(
       flowId: flowId,
       sequence: sequence,
       name: name,
       timestamp: DateTime.parse(timestamp),
-      operation: operation as String?,
+      operation: operation,
       httpStatusCode: httpStatusCode as int?,
       requestId: requestId as String?,
       errorType: errorType as String?,
@@ -223,14 +259,69 @@ final class PaymentSheetTelemetryEvent {
 
   final String flowId;
   final int sequence;
-  final String name;
+  final PaymentSheetTelemetryEventName name;
   final DateTime timestamp;
-  final String? operation;
+  final PaymentSheetTelemetryOperation? operation;
   final int? httpStatusCode;
   final String? requestId;
   final String? errorType;
 }
 
+/// Application-facing payment-sheet lifecycle transitions.
+enum PaymentSheetEventType {
+  presented,
+  checkoutLoadStarted,
+  checkoutLoadSucceeded,
+  checkoutLoadFailed,
+  paymentAttemptStarted,
+  paymentAttemptFailed,
+  confirmationRequired,
+  authorizationRequired,
+  paymentStatusPolling,
+  completed,
+  canceled,
+  failed,
+}
+
+/// An application-facing stage in one payment-sheet presentation.
+///
+/// Recoverable failures leave the native sheet open so the customer can retry.
+/// Terminal application behavior belongs in the [PaymentSheetResult] returned
+/// by `presentPaymentSheet`.
+final class PaymentSheetEvent {
+  const PaymentSheetEvent({
+    required this.flowId,
+    required this.sequence,
+    required this.type,
+    required this.timestamp,
+    this.errorType,
+  });
+
+  final String flowId;
+  final int sequence;
+  final PaymentSheetEventType type;
+  final DateTime timestamp;
+  final String? errorType;
+
+  /// Whether this event represents the end of the sheet presentation.
+  bool get isTerminal => switch (type) {
+    PaymentSheetEventType.completed ||
+    PaymentSheetEventType.canceled ||
+    PaymentSheetEventType.failed =>
+      true,
+    _ => false,
+  };
+
+  /// Whether the sheet remains open and permits the customer to retry.
+  bool get isRecoverableFailure => switch (type) {
+    PaymentSheetEventType.checkoutLoadFailed ||
+    PaymentSheetEventType.paymentAttemptFailed =>
+      true,
+    _ => false,
+  };
+}
+
+/// Terminal outcome of one native payment-sheet presentation.
 sealed class PaymentSheetResult {
   const PaymentSheetResult();
 
@@ -268,16 +359,22 @@ sealed class PaymentSheetResult {
   }
 }
 
+/// The payment sheet completed its client-side payment flow.
+///
+/// The merchant backend must still verify the authoritative Order state before
+/// fulfillment.
 final class PaymentSheetCompleted extends PaymentSheetResult {
   const PaymentSheetCompleted({this.paymentId});
 
   final String? paymentId;
 }
 
+/// The customer dismissed the payment sheet before completion.
 final class PaymentSheetCanceled extends PaymentSheetResult {
   const PaymentSheetCanceled();
 }
 
+/// The payment sheet stopped because of a terminal error.
 final class PaymentSheetFailed extends PaymentSheetResult {
   const PaymentSheetFailed({
     required this.code,

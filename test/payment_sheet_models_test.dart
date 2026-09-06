@@ -68,6 +68,18 @@ void main() {
 
     expect(event.sequence, 1);
     expect(
+      event.name,
+      PaymentSheetTelemetryEventName.checkoutLoadStarted,
+    );
+    final lifecycleEvent = PaymentSheetEvent(
+      flowId: '550e8400-e29b-41d4-a716-446655440000',
+      sequence: 1,
+      type: PaymentSheetEventType.checkoutLoadStarted,
+      timestamp: DateTime.utc(2026, 9, 4, 12),
+    );
+    expect(lifecycleEvent.type, PaymentSheetEventType.checkoutLoadStarted);
+    expect(lifecycleEvent.isRecoverableFailure, isFalse);
+    expect(
       () => PaymentSheetTelemetryEvent.fromJson({
         'flowId': '550e8400-e29b-41d4-a716-446655440000',
         'sequence': 1,
@@ -77,5 +89,15 @@ void main() {
       }),
       throwsFormatException,
     );
+
+    final diagnostic = PaymentSheetTelemetryEvent.fromJson({
+      'flowId': '550e8400-e29b-41d4-a716-446655440000',
+      'sequence': 2,
+      'name': 'inttegro.request.prepared',
+      'timestamp': '2026-09-04T12:00:00.000Z',
+      'operation': 'checkout.lookup',
+    });
+    expect(diagnostic.operation, PaymentSheetTelemetryOperation.checkoutLookup);
+    expect(diagnostic.name, PaymentSheetTelemetryEventName.requestPrepared);
   });
 }
