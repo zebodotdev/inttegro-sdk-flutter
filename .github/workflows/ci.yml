@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: "3.44.0"
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze package
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build API documentation
+        run: |
+          dart doc \
+            --output=build/api-docs \
+            --link-to-source-root=. \
+            --link-to-source-revision="$GITHUB_SHA" \
+            --link-to-source-uri-template='https://github.com/zebodotdev/inttegro-sdk-flutter/blob/%r%/%f%#L%l%'

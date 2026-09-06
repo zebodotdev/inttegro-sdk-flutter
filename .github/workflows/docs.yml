@@ -1,0 +1,91 @@
+name: API documentation
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version path to publish, for example v0.1.0
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: api-documentation
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      DOC_VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.version }}
+      DOC_DOMAIN: flutter.inttegro.dev
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          channel: stable
+          flutter-version: "3.44.0"
+          cache: true
+
+      - name: Build API documentation
+        run: |
+          flutter pub get
+          dart doc \
+            --output=build/api-docs \
+            --link-to-source-root=. \
+            --link-to-source-revision="$GITHUB_SHA" \
+            --link-to-source-uri-template='https://github.com/zebodotdev/inttegro-sdk-flutter/blob/%r%/%f%#L%l%'
+
+      - name: Publish versioned documentation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$DOC_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid documentation version: $DOC_VERSION" >&2
+            exit 1
+          fi
+
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            git fetch origin gh-pages:refs/remotes/origin/gh-pages
+            git worktree add pages-site origin/gh-pages
+          else
+            git worktree add --detach pages-site
+            git -C pages-site switch --orphan gh-pages
+            git -C pages-site rm -rf --ignore-unmatch .
+          fi
+
+          rm -rf "pages-site/$DOC_VERSION"
+          mkdir -p "pages-site/$DOC_VERSION"
+          cp -R build/api-docs/. "pages-site/$DOC_VERSION/"
+          printf '{"version":"%s","commit":"%s","repository":"%s"}\n' \
+            "$DOC_VERSION" "$GITHUB_SHA" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            > "pages-site/$DOC_VERSION/provenance.json"
+          printf '%s\n' "$DOC_DOMAIN" > pages-site/CNAME
+          touch pages-site/.nojekyll
+          printf '%s\n' \
+            '<!doctype html>' \
+            '<html lang="en"><head><meta charset="utf-8">' \
+            "<meta http-equiv=\"refresh\" content=\"0; url=./$DOC_VERSION/\">" \
+            '<meta name="viewport" content="width=device-width, initial-scale=1">' \
+            '<title>Inttegro SDK for Flutter</title></head>' \
+            "<body><p><a href=\"./$DOC_VERSION/\">Open the latest Flutter SDK API documentation</a>.</p></body></html>" \
+            > pages-site/index.html
+
+          git -C pages-site config user.name github-actions[bot]
+          git -C pages-site config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git -C pages-site add --all
+          if git -C pages-site diff --cached --quiet; then
+            echo "Documentation is already current."
+            exit 0
+          fi
+          git -C pages-site commit -m "docs: publish $DOC_VERSION"
+          git -C pages-site push origin HEAD:gh-pages
