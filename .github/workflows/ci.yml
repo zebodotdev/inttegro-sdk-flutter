@@ -35,9 +35,4 @@ jobs:
         run: flutter test
 
       - name: Build API documentation
-        run: |
-          dart doc \
-            --output=build/api-docs \
-            --link-to-source-root=. \
-            --link-to-source-revision="$GITHUB_SHA" \
-            --link-to-source-uri-template='https://github.com/zebodotdev/inttegro-sdk-flutter/blob/%r%/%f%#L%l%'
+        run: dart doc --output=build/api-docs

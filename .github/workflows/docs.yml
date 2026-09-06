@@ -28,6 +28,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          ref: ${{ env.DOC_VERSION }}
 
       - name: Set up Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
@@ -39,11 +40,7 @@ jobs:
       - name: Build API documentation
         run: |
           flutter pub get
-          dart doc \
-            --output=build/api-docs \
-            --link-to-source-root=. \
-            --link-to-source-revision="$GITHUB_SHA" \
-            --link-to-source-uri-template='https://github.com/zebodotdev/inttegro-sdk-flutter/blob/%r%/%f%#L%l%'
+          dart doc --output=build/api-docs
 
       - name: Publish versioned documentation
         shell: bash
@@ -53,6 +50,7 @@ jobs:
             echo "Invalid documentation version: $DOC_VERSION" >&2
             exit 1
           fi
+          SOURCE_SHA=$(git rev-parse HEAD)
 
           if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
             git fetch origin gh-pages:refs/remotes/origin/gh-pages
@@ -67,7 +65,7 @@ jobs:
           mkdir -p "pages-site/$DOC_VERSION"
           cp -R build/api-docs/. "pages-site/$DOC_VERSION/"
           printf '{"version":"%s","commit":"%s","repository":"%s"}\n' \
-            "$DOC_VERSION" "$GITHUB_SHA" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            "$DOC_VERSION" "$SOURCE_SHA" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
             > "pages-site/$DOC_VERSION/provenance.json"
           printf '%s\n' "$DOC_DOMAIN" > pages-site/CNAME
           touch pages-site/.nojekyll
