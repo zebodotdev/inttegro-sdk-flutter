@@ -40,6 +40,7 @@ jobs:
       - name: Build API documentation
         run: |
           flutter pub get
+          rm -f dartdoc_options.yaml
           dart doc --output=build/api-docs
 
       - name: Publish versioned documentation
