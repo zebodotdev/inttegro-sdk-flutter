@@ -46,6 +46,23 @@ void main() {
         throwsArgumentError,
       );
     });
+
+    test('serializes only payment-sheet feature overrides', () {
+      final value = const PaymentSheetConfiguration(
+        orderId: 'or_test',
+        features: PaymentSheetFeatures(
+          showLineItems: true,
+          showReceiptDownload: true,
+          allowPaymentMethodChange: false,
+        ),
+      ).toJson();
+
+      expect(value['features'], {
+        'showLineItems': true,
+        'showReceiptDownload': true,
+        'allowPaymentMethodChange': false,
+      });
+    });
   });
 
   test('decodes the shared result union', () {
