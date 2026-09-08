@@ -1,6 +1,6 @@
 # Inttegro Flutter
 
-[API reference](https://flutter.inttegro.dev/v0.2.0/) ·
+[API reference](https://flutter.inttegro.dev/v0.3.0/) ·
 [Studio guide](https://studio.inttegro.com/sdks/flutter)
 
 Typed Flutter facade for Inttegro's native payment sheet. This is an
@@ -34,6 +34,12 @@ await Inttegro.instance.initializePaymentSheet(
     orderId: orderId,
     returnUrl: Uri.parse('merchant-app://inttegro-return'),
     telemetry: activeTraceContext, // Optional traceparent and tracestate.
+    features: const PaymentSheetFeatures(
+      showLineItems: true,
+      showInvoiceDownload: true,
+      showReceiptDownload: true,
+      allowPaymentMethodChange: false,
+    ),
   ),
 );
 
@@ -57,6 +63,12 @@ try {
   await lifecycleSubscription.cancel();
 }
 ```
+
+All feature flags are optional. Line items and post-payment downloads are off
+by default; changing an attached payment method remains allowed by default.
+Invoice and receipt actions appear only when Checkout returns the corresponding
+document link after payment succeeds. Disabling payment-method changes does not
+block collection when the Order has no attached method.
 
 Finalizing an Order seals its amount and activates checkout; it does not mean
 the payment has completed. Treat `PaymentSheetCompleted` as immediate client UI
@@ -85,7 +97,7 @@ The package registers an Android and iOS plugin for each Flutter engine. The
 plugins keep presentation state isolated per engine and delegate to the same
 native `Inttegro` artifacts used by the React Native SDK. CocoaPods links the
 iOS artifact through `inttegro_flutter.podspec`, while Gradle resolves
-`com.inttegro:inttegro-android:0.1.0`.
+`com.inttegro:inttegro-android:0.2.0`.
 
 ## Requirements
 

@@ -83,6 +83,35 @@ final class PaymentSheetTelemetry {
   }
 }
 
+/// Optional content and actions exposed by the native payment sheet.
+final class PaymentSheetFeatures {
+  const PaymentSheetFeatures({
+    this.showLineItems = false,
+    this.showInvoiceDownload = false,
+    this.showReceiptDownload = false,
+    this.allowPaymentMethodChange = true,
+  });
+
+  /// Shows the Order's line items before payment. Defaults to `false`.
+  final bool showLineItems;
+
+  /// Offers the invoice after payment succeeds. Defaults to `false`.
+  final bool showInvoiceDownload;
+
+  /// Offers the receipt after payment succeeds. Defaults to `false`.
+  final bool showReceiptDownload;
+
+  /// Lets the payer replace an attached payment method. Defaults to `true`.
+  final bool allowPaymentMethodChange;
+
+  Map<String, Object> toJson() => {
+        if (showLineItems) 'showLineItems': true,
+        if (showInvoiceDownload) 'showInvoiceDownload': true,
+        if (showReceiptDownload) 'showReceiptDownload': true,
+        if (!allowPaymentMethodChange) 'allowPaymentMethodChange': false,
+      };
+}
+
 /// Configuration stored for the next payment-sheet presentation.
 final class PaymentSheetConfiguration {
   const PaymentSheetConfiguration({
@@ -90,12 +119,15 @@ final class PaymentSheetConfiguration {
     this.returnUrl,
     this.appearance = const PaymentSheetAppearance(),
     this.telemetry = const PaymentSheetTelemetry(),
+    this.features = const PaymentSheetFeatures(),
   });
 
   final String orderId;
   final Uri? returnUrl;
   final PaymentSheetAppearance appearance;
   final PaymentSheetTelemetry telemetry;
+  /// Optional content and actions exposed by the native payment sheet.
+  final PaymentSheetFeatures features;
 
   Map<String, Object> toJson() {
     final normalizedOrderId = orderId.trim();
@@ -112,11 +144,13 @@ final class PaymentSheetConfiguration {
 
     final appearanceJson = appearance.toJson();
     final telemetryJson = telemetry.toJson();
+    final featuresJson = features.toJson();
     return {
       'orderId': normalizedOrderId,
       if (returnUrl case final value?) 'returnURL': value.toString(),
       if (appearanceJson.isNotEmpty) 'appearance': appearanceJson,
       if (telemetryJson.isNotEmpty) 'telemetry': telemetryJson,
+      if (featuresJson.isNotEmpty) 'features': featuresJson,
     };
   }
 }
