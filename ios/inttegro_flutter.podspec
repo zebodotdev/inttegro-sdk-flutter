@@ -6,7 +6,7 @@ Pod::Spec.new do |spec|
   spec.license = { type: 'MIT' }
   spec.author = { 'Inttegro Eng' => 'engineering@inttegro.com' }
   spec.source = {
-    git: 'https://github.com/zebodotdev/inttegro-sdk-flutter.git',
+    git: 'https://github.com/inttegro/inttegro-sdk-flutter.git',
     tag: spec.version.to_s,
   }
   spec.source_files = 'Classes/**/*.{h,m,mm}'
